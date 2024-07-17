@@ -1,0 +1,57 @@
+%%writefile hello.cu
+#include <bits/stdc++.h>
+#include "cuda_runtime.h"
+using namespace std;
+__global__ void VecAdd(float* A, float* B, float* C, int b, int n, int m, int k)
+{
+	int a = threadIdx.x;
+	if(a < n) {
+		for(int c = 0; c < k; ++c) 
+			C[a * k + c] += A[a * m + b] * B[b * k + c];
+	}
+}
+void matmul(const float *h_A, const float *h_B, int n, int m, int k, float *h_C) {
+	float *d_A;
+	float *d_B;
+	float *d_C;
+	cudaMalloc(&d_A, n * m * sizeof(float));
+	cudaMemcpy(d_A, h_A, n * m * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMalloc(&d_B, m * k * sizeof(float));
+	cudaMemcpy(d_B, h_B, m * k * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMalloc(&d_C, n * k * sizeof(float));
+	
+	int threadsPerBlock = 128;
+	for(int b = 0; b < m; ++b) {
+		int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
+		VecAdd<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, b, n, m, k);
+	}
+	cudaMemcpy(h_C, d_C, n * k * sizeof(float), cudaMemcpyDeviceToHost);
+
+	// Free device memory
+	cudaFree(d_A);
+	cudaFree(d_C);
+	cudaFree(d_C);
+}
+const int L = 4e6 + 7; 
+float A[L], B[L], C[L];
+
+int n, m, k;
+int main()
+{
+	auto S = clock();
+	n = m = k = 2000;
+	for(int i = 0; i < n; ++i)
+		for(int j = 0; j < m; ++j)
+			A[i * m + j] = 1. * i / (j + 1);
+	for(int i = 0; i < m; ++i)
+		for(int j = 0; j < k; ++j)
+			B[i * k + j] = 1. * j / (i + 1);
+	matmul(A, B, n, m, k, C);
+	float ans = 0;
+	for(int i = 0; i < n; ++i) 
+		for(int j = 0; j < k; ++j) 
+			ans += C[i * k + j];
+	cout << ans << '\n';
+	cout << "clock = " << (double) (clock() - S) / CLOCKS_PER_SEC << endl;
+	return 0;
+}

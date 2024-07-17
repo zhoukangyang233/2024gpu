@@ -1,0 +1,22 @@
+%%writefile hello.cu
+#include <bits/stdc++.h>
+#define sz(a) ((int) (a).size())
+#define vi vector < int >
+#include "cuda_runtime.h"
+using namespace std;
+__global__ void qwq(int*a) {
+}
+int debubble(int*a, int n) {
+	int y = 0;
+	for(int x = 0; x < n; ++x) if(a[x]) a[y++] = a[x];
+	return y;
+}
+mt19937 rng;
+int main() {
+	n = 4e6;
+	for(int i = 0; i < n; ++i)
+		a[i] = rng() & 1;
+	Sort(a, n);
+	cout << "clock = " << (double) (clock() - S) / CLOCKS_PER_SEC << endl;
+	return 0;
+}

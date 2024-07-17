@@ -1,0 +1,57 @@
+%%writefile hello.cu
+#include <bits/stdc++.h>
+#define sz(a) ((int) (a).size())
+#define vi vector < int >
+#include "cuda_runtime.h"
+using namespace std;
+__global__ void qsort(int *a, int *b, int len, int n) {
+	int l = threadIdx.x * (len * 2);
+	int mid = l + len;
+	int r = l + len * 2;
+	if(mid < n) {
+		r = min(r, n);
+		int p1 = l, p2 = mid;
+		for(int pos = l; pos < r; ++pos) {
+			if(p1 < mid && (p2 == r || a[p1] < a[p2])) 
+				b[pos] = a[p1++];
+			else b[pos] = a[p2++];
+		}
+	} else if(l < n) {
+		for(int pos = l; pos < n; ++pos)
+			b[pos] = a[pos];
+	}
+}
+__global__ void cpy(int *b, int *a, int n) {
+	int i = threadIdx.x;
+	if(i < n) b[i] = a[i];
+}
+void Sort(int *Data, int n) {
+	int size = sizeof(int) * n;
+	int* d_A, *d_B;
+	cudaMalloc(&d_A, size);
+	cudaMalloc(&d_B, size);
+	cudaMemcpy(d_A, Data, size, cudaMemcpyHostToDevice);
+	for(int len = 1; len < n; len *= 2) {
+		int use = (n - len - 1) / (len * 2) + 1;
+		int thread = 16;
+		int block = (use + thread - 1) / thread;
+		qsort<<<block, thread>>>(d_A, d_B, len, n);
+		cudaMemcpy(d_A, d_B, size, cudaMemcpyDeviceToDevice);
+	}
+	cudaMemcpy(Data, d_A, size, cudaMemcpyDeviceToHost);
+	cudaFree(d_A);
+	cudaFree(d_B);
+}
+const int L = 4e6 + 7;
+int n, a[L];
+mt19937 rng;
+int main() {
+	auto S = clock();
+	n = 4e6;
+	unsigned mask = (1 << 30) - 1;
+	for(int i = 0; i < n; ++i)
+		a[i] = rng() & mask;
+	Sort(a, n);
+	cout << "clock = " << (double) (clock() - S) / CLOCKS_PER_SEC << endl;
+	return 0;
+}
